@@ -8,22 +8,36 @@ import { Alert } from "react-bootstrap";
 
 const AdminPanel = () => {
   // Sample pizza types (You can customize this with actual pizza types)
+  const [alertShows, setAlertShows] = useState(false);
   const pizzaTypes = ["Margherita", "Pepperoni", "Vegetarian", "Supreme"];
 // State to store selected pizza type and message
   const [selectedPizza, setSelectedPizza] = useState("");
   const [message, setMessage] = useState("");
   let user = useUserAuth();
   let email = []
+  let tokens = [];
+  let tokenPromises
   const Handlegetusers = async () => {
     const querySnapshot = await getDocs(collection(db, "users"));
-    // console.log(querySnapshot);
     querySnapshot.forEach((doc) => {
       // doc.data() is never undefined for query doc snapshots
       console.log(doc.id, " => ", doc.data());
-      console.log("line 22", doc.id)
+      // console.log("line 22", doc.id)
       email.push(...email, doc.id)
     });
-    console.log("line 25::", email)
+    // console.log("line 25::", email)
+    const tokenCollection = collection(db, 'token');
+
+    // Get all documents from the "token" collection
+    const tokenSnapshot = await getDocs(tokenCollection);
+
+    // Extract the FCM tokens from the documents
+    tokenPromises = tokenSnapshot.docs.map((doc) => doc.data().token);
+
+    tokenSnapshot.forEach((doc) => {
+      tokens.push(doc.data().token);
+    });
+    console.log("line 39::: ", tokenPromises)
   };
   const fetchData = async () => {
     if (user) {
@@ -33,26 +47,50 @@ const AdminPanel = () => {
     }
   };
   
-  // const fetchData = async () => {
-  //   const docRef = doc(db, "users", user.user.email);
-  //  console.log("line18",user[0]);
-  // }
 
   // Function to handle message submission
   const sendMessage = () => {
+    console.log("line 52:: ", tokens)
     if (selectedPizza && message) {
       // Here, you can implement the logic to send the message to users who ordered the selected pizza
       console.log("Sending message:", message, "to users who ordered:", selectedPizza);
-      email.forEach((userEmail) => {
-        // Call the function to send emails here
-        // alert(userEmail, selectedPizza, message);
-        alert(`Sending message: "${message}" to user with email: "${userEmail}"`);
-      });
+      // setAlertShows(true)
+      FcmAPI(selectedPizza, message)
       // Clear the fields after sending the message
       setSelectedPizza("");
       setMessage("");
     }
   };
+  /// send message function
+  const serverKey= "AAAACA_mXwI:APA91bHAz4TvhCTFsjSHiYh2ERTdgg2lCvVBH4jPwR7lzjrmx9I9jZa2ZuVw5tWe_SDMTKp030GIRbk6LEEqhQtY6rH-87FilapBlXfG6T3SIunPWUK5wE8Czhc_HIMIcBj4YEspgIJc"
+  
+  const FcmAPI = async (title, body) => {
+    console.log("line 65:: ", title, body, tokens)
+    await fetch("https://fcm.googleapis.com/fcm/send", {
+      method: "POST",
+      headers: {
+        Authorization: "key=" + serverKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        {
+          notification: {
+            title: title,
+            body: body,
+          },
+          registration_ids: tokenPromises,
+        }
+      ),
+    })
+    .then((response) => response.json())
+    .then((data) => {
+      console.log('Notification sent successfully:', data);
+    })
+    .catch((error) => {
+      console.error('Error sending notification:', error);
+      console.error('Error sending notification:', tokens);
+    });
+  }
   const navigate = useNavigate();
   let { logout } = useUserAuth();
   const handleLogout = async () => {
@@ -71,6 +109,9 @@ useEffect(()=>{
   return (
     <div className="admin-panel">
       <h2>Admin Panel</h2>
+      {alertShows && (<Alert variant={"success"}>
+          This is a alert—check it out!
+        </Alert>)}
       <label>
         Select Pizza Type:
         <select
