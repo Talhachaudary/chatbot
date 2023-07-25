@@ -74,6 +74,7 @@ export default function Chatbot() {
     const fetchData = async () => {
       try {
         const docRef = doc(db, "users", user.user.email);
+        console.log("line 77:: ", user, user.user)
         const docSnap = await getDoc(docRef);
         const data = docSnap.data();
         const DBmessages = data.Messages || [];
@@ -174,7 +175,7 @@ export default function Chatbot() {
         return data.json();
       })
       .then((data) => {
-        console.log(data);
+        console.log("line 178::::-----------------------------------",data, data.choices[0],);
         setMessages([
           ...chatMessages,
           {
